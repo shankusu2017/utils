@@ -1,3 +1,3 @@
 module github.com/shankusu2017/utils
 
-go 1.15
+go 1.21

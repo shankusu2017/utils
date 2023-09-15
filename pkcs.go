@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"log"
 )
 
 func Pkcs7(plaintext []byte, blockSize int) []byte {
@@ -17,6 +18,10 @@ func Pkcs7(plaintext []byte, blockSize int) []byte {
 }
 
 func DePkcs7(buf []byte, blockLen int) []byte {
+	if len(buf) == 0 {
+		log.Printf("ERROR 47f4e43b input buf is empty\n")
+		return []byte{}
+	}
 	paddingSize := int(buf[len(buf)-1])
 	if paddingSize > blockLen {
 		return buf
