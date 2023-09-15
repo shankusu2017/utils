@@ -38,6 +38,10 @@ func AESDeCrypt(cipherText, iv, key []byte) ([]byte, error) {
 		err := errors.New(fmt.Sprintf("9eb49376 invalid ASE.buf.len:%d\n", len(cipherText)))
 		return nil, err
 	}
+	if len(cipherText) == 0 {
+		err := errors.New(fmt.Sprintf("e77fcb85 ciphterText is empty!\n"))
+		return []byte{}, err
+	}
 
 	// encrypt
 	block, err := aes.NewCipher(key)
