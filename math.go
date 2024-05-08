@@ -34,3 +34,11 @@ func RandWeigh(r []int) (int, error) {
 
 	return -1, errors.New("7457d252 library error")
 }
+
+// MakeMagic2Buf 用随机值填充buf
+func MakeMagic2Buf(buf []byte) {
+	ttl := len(buf)
+	for i := 0; i < ttl; i++ {
+		buf[i] = byte(rand.Uint32() % 256)
+	}
+}
