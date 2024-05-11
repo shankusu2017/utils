@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -41,4 +42,12 @@ func MakeMagic2Buf(buf []byte) {
 	for i := 0; i < ttl; i++ {
 		buf[i] = byte(rand.Uint32() % 256)
 	}
+}
+
+// MakeHexString buf.len = 4,那么产生随机的4个Byte，转换成8个CHAR "6eb88a73"
+func MakeHexString(len int) string {
+	buf := make([]byte, len)
+	rand.Read(buf)
+	str := hex.EncodeToString(buf)
+	return str
 }
