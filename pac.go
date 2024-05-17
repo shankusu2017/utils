@@ -107,7 +107,7 @@ func slowFind(ip string) bool {
 	defer pacMgr.mtxIPMap.RUnlock()
 
 	// WARN 应该做一个特殊的IP地址池
-	if ip == "43.128.51.86" {
+	if ip == "43.128.51.86" { //43.128.0.0/18
 		pacMgr.outIPMap[ip] = true
 		return false
 	}
