@@ -91,8 +91,9 @@ func decodePacket(ipBuf []byte) *protoHead {
 	return &head
 }
 
-// CalSessionID 计算一个IP会话的ID（类似TCP、UDP的五元组）
-func CalSessionID(ipBuf []byte) (string, error) {
+// CalSrcSessionID 计算一个IP会话的ID（类似TCP、UDP的五元组）
+// 从源端发往接收端
+func CalSrcSessionID(ipBuf []byte) (string, error) {
 	var id = ""
 
 	head := decodePacket(ipBuf)
@@ -111,6 +112,32 @@ func CalSessionID(ipBuf []byte) (string, error) {
 	} else {
 		id = fmt.Sprintf("ipSrc_%s:ipDst_%s:protocol_%d",
 			head.IPv4.SrcIP.String(), head.IPv4.DstIP.String(), head.IPv4.Protocol)
+	}
+
+	return id, nil
+}
+
+// CalDstSessionID 计算一个IP会话的ID（类似TCP、UDP的五元组）
+// 从接收端发往源端
+func CalDstSessionID(ipBuf []byte) (string, error) {
+	var id = ""
+
+	head := decodePacket(ipBuf)
+	if head.IPv4 == nil {
+		return id, errors.New(fmt.Sprintf("0x46d6f691 ipv4 is nil"))
+	}
+
+	if head.UDP != nil {
+		id = fmt.Sprintf("ipSrc_%s:ipDst_%s:protocol_%d:srcPort_%d:dstPort_%d",
+			head.IPv4.DstIP.String(), head.IPv4.SrcIP.String(), head.IPv4.Protocol,
+			head.UDP.DstPort, head.UDP.SrcPort)
+	} else if head.TCP != nil {
+		id = fmt.Sprintf("ipSrc_%s:ipDst_%s:protocol_%d:srcPort_%d:dstPort_%d",
+			head.IPv4.DstIP.String(), head.IPv4.SrcIP.String(), head.IPv4.Protocol,
+			head.TCP.DstPort, head.TCP.SrcPort)
+	} else {
+		id = fmt.Sprintf("ipSrc_%s:ipDst_%s:protocol_%d",
+			head.IPv4.DstIP.String(), head.IPv4.SrcIP.String(), head.IPv4.Protocol)
 	}
 
 	return id, nil
