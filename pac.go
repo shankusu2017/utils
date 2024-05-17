@@ -106,6 +106,12 @@ func slowFind(ip string) bool {
 	pacMgr.mtxIPMap.RLock()
 	defer pacMgr.mtxIPMap.RUnlock()
 
+	// WARN 应该做一个特殊的IP地址池
+	if ip == "43.128.51.86" {
+		pacMgr.outIPMap[ip] = true
+		return false
+	}
+
 	var loc = false
 	for i := 1; i < constant.Size32; i++ {
 		addr := maskAddr(ip, i)

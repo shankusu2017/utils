@@ -27,4 +27,7 @@ func TestIPConv(t *testing.T) {
 	if IsLocalIP("182.92.205.225") != true {
 		t.Fatalf("0x5c68b8eb FATAL")
 	}
+	if IsLocalIP("43.128.51.86") {
+		t.Fatalf("0x46588ca4 FATAL")
+	}
 }
