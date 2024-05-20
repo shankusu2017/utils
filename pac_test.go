@@ -8,7 +8,7 @@ import (
 
 func TestIPConv(t *testing.T) {
 	fmt.Printf(os.Getwd())
-	InitPac("../OpenVPN-Golang/config/cnIP.cfg")
+	InitPac("../nodeMgr/etc/cnIP.cfg", "../nodeMgr/etc/outIP.cfg")
 	if IsLocalIP("47.103.204.157") != true {
 		t.Fatalf("8a48b8f6 FATAL")
 	}

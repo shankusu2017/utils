@@ -13,30 +13,38 @@ import (
 	"sync"
 )
 
+/*
+ * 先从已知的内、外网地址 map 中查找
+ * 找不到，再从特殊的外网地址池查找
+ * 最后从普通的内网地址池查找(找不到则属于外网地址，找得到则属于内网地址)
+ */
 type pacMgrT struct {
-	localIPMap    map[string]bool     // 已知的内网地址
-	outIPMap      map[string]bool     // 已知的外网地址
-	localIPSubnet [32]map[string]bool // 已知的内网地址信息
-	mtxIPMap      sync.RWMutex
+	localIPMap map[string]bool // 已知的内网地址 map[ip.addr]=true
+	outIPMap   map[string]bool // 已知的外网地址
+
+	outAddrMap   [32]map[string]bool // 特殊的外网地址池信息（命中则属于网外地址，即使符合 localIPSubNet 的条件)
+	localAddrMap [32]map[string]bool // 已知的内网地址池信息 [maskNetLen](map[netNo]=exist)
+	mtxIPMap     sync.RWMutex
 }
 
 var (
 	pacMgr *pacMgrT
 )
 
-func InitPac(configPath string) {
+func InitPac(configPath, outAddrCfg string) {
 	p := &pacMgrT{}
 	p.localIPMap = make(map[string]bool, constant.Size128K)
 	p.outIPMap = make(map[string]bool, constant.Size4K)
 
+	initOutCfg(outAddrCfg, p)
 	initLocalCfg(configPath, p)
 
 	pacMgr = p
 }
 
-func initLocalCfg(configPath string, p *pacMgrT) {
-	for i := 0; i < len(p.localIPSubnet); i++ {
-		p.localIPSubnet[i] = make(map[string]bool, constant.Size256)
+func initOutCfg(configPath string, p *pacMgrT) {
+	for i := 0; i < len(p.outAddrMap); i++ {
+		p.outAddrMap[i] = make(map[string]bool, constant.Size256)
 	}
 
 	fd, err := os.Open(configPath)
@@ -55,15 +63,55 @@ func initLocalCfg(configPath string, p *pacMgrT) {
 		//1.24.0.0/13
 		addrInfo := strings.Split(strLine, "/")
 		if len(addrInfo) == 2 {
-			ip := addrInfo[0]
-			netmask := addrInfo[1]
+			netNo := addrInfo[0]   /* 网络号 */
+			netmask := addrInfo[1] /* 子网掩码 */
+			subMask, err := strconv.Atoi(netmask)
+			if err != nil {
+				log.Fatalf("FATAL 0x14018e82 netmask invalid(%s)\n", netmask)
+			} else {
+				if subMask >= 0 && subMask < len(p.outAddrMap) {
+					p.outAddrMap[subMask][netNo] = true
+					//fmt.Printf("%s %s\n", netNo, netmask)
+				} else {
+					fmt.Printf("WARN 0x13c11d2d netmask invalid(%s)\n", netmask)
+				}
+			}
+		} else {
+			log.Fatal(fmt.Sprintf("valid gateWay addr:%s", addrInfo))
+		}
+	}
+}
+
+func initLocalCfg(configPath string, p *pacMgrT) {
+	for i := 0; i < len(p.localAddrMap); i++ {
+		p.localAddrMap[i] = make(map[string]bool, constant.Size256)
+	}
+
+	fd, err := os.Open(configPath)
+	if err != nil {
+		log.Fatalf("FATAL f981d07e open config file(%s) err(%s)", configPath, err.Error())
+	}
+	defer fd.Close()
+
+	br := bufio.NewReader(fd)
+	for {
+		a, _, c := br.ReadLine()
+		if c == io.EOF {
+			break
+		}
+		strLine := string(a)
+		//1.24.0.0/13
+		addrInfo := strings.Split(strLine, "/")
+		if len(addrInfo) == 2 {
+			netNo := addrInfo[0]   /* 网络号 */
+			netmask := addrInfo[1] /* 子网掩码 */
 			subMask, err := strconv.Atoi(netmask)
 			if err != nil {
 				log.Fatalf("FATAL 62b5190e netmask invalid(%s)\n", netmask)
 			} else {
-				if subMask >= 0 && subMask < len(p.localIPSubnet) {
-					p.localIPSubnet[subMask][ip] = true
-					//fmt.Printf("%s %s\n", ip, netmask)
+				if subMask >= 0 && subMask < len(p.localAddrMap) {
+					p.localAddrMap[subMask][netNo] = true
+					//fmt.Printf("%s %s\n", netNo, netmask)
 				} else {
 					fmt.Printf("WARN 6b4d85ca netmask invalid(%s)\n", netmask)
 				}
@@ -106,16 +154,26 @@ func slowFind(ip string) bool {
 	pacMgr.mtxIPMap.RLock()
 	defer pacMgr.mtxIPMap.RUnlock()
 
-	// WARN 应该做一个特殊的IP地址池
-	if ip == "43.128.51.86" { //43.128.0.0/18
-		pacMgr.outIPMap[ip] = true
-		return false
+	{ // 被特殊的外网地址池命中
+		var out = false
+		for i := 1; i < constant.Size32; i++ {
+			addr := maskAddr(ip, i)
+			out = pacMgr.outAddrMap[i][addr]
+			if out == true {
+				//log.Printf("subnet.bit:%d, netIP:%v\n", i, addr)
+				break
+			}
+		}
+		if out {
+			pacMgr.outIPMap[ip] = true
+			return false
+		}
 	}
 
 	var loc = false
 	for i := 1; i < constant.Size32; i++ {
 		addr := maskAddr(ip, i)
-		loc = pacMgr.localIPSubnet[i][addr]
+		loc = pacMgr.localAddrMap[i][addr]
 		if loc == true {
 			//log.Printf("subnet.bit:%d, netIP:%v\n", i, addr)
 			break
