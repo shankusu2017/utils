@@ -16,6 +16,7 @@ import (
 var (
 	infoLogger  *log.Logger
 	debugLogger *log.Logger
+	errorLogger *log.Logger
 
 	logFilePath   string
 	logFileHandle *os.File
@@ -49,8 +50,12 @@ func SetFile(file string) {
 		//log.LstdFlags表示时间格式等
 		//log.Llongfile表示文件名及调用代码的位置,log.Llongfile=》改为通过getCallTrace获取前缀
 		currentDay = time.Now().YearDay()
-		infoLogger = log.New(logFileHandle, "[INFO] ", log.LstdFlags)
-		debugLogger = log.New(logFileHandle, "[DEBUG] ", log.LstdFlags)
+		infoLogger = log.New(os.Stdout, "[INFO ]", log.LstdFlags)
+		debugLogger = log.New(os.Stderr, "[DEBUG] ", log.LstdFlags)
+		errorLogger = log.New(os.Stderr, "[ERROR] ", log.LstdFlags)
+		//infoLogger = log.New(logFileHandle, "[INFO] ", log.LstdFlags)
+		//debugLogger = log.New(logFileHandle, "[DEBUG] ", log.LstdFlags)
+		//errorLogger = log.New(logFileHandle, "[ERROR] ", log.LstdFlags)
 		logFilePath = file
 	}
 }
@@ -58,6 +63,9 @@ func SetFile(file string) {
 func isDayChanged() {
 	fileLock.Lock()
 	defer fileLock.Unlock()
+	{ // 不单独存档到文件
+		return
+	}
 
 	day := time.Now().YearDay()
 	if day == currentDay {
@@ -80,14 +88,28 @@ func isDayChanged() {
 	currentDay = day
 }
 
-// Debug golang中的any相当于interface{}空接口
-func Debug(format string, args ...interface{}) {
+func Printf(format string, v ...interface{}) {
 	if logLevel <= DEBUGLEVEL {
 		isDayChanged()
 		var msg string
 		/* [INFO] 2024/05/20 21:30:21 utils/log/log_test.go:12 utils.log test!%!!(MISSING)(EXTRA []interface {}=[])
 		 * 解决 args 为NULL 引起的格式问题，下同
 		 */
+		if len(v) == 0 {
+			msg = fmt.Sprintf("%s%s", getPrefix(), format)
+		} else {
+			msg = fmt.Sprintf(getPrefix()+format, v)
+		}
+
+		debugLogger.Print(msg)
+	}
+}
+
+// Debug golang中的any相当于interface{}空接口
+func Debug(format string, args ...interface{}) {
+	if logLevel <= DEBUGLEVEL {
+		isDayChanged()
+		var msg string
 		if len(args) == 0 {
 			msg = fmt.Sprintf("%s%s", getPrefix(), format)
 		} else {
@@ -109,6 +131,20 @@ func Info(format string, args ...interface{}) {
 		}
 
 		infoLogger.Print(msg)
+	}
+}
+
+func Error(format string, args ...interface{}) {
+	if logLevel <= ERRORLEVEL {
+		isDayChanged()
+		var msg string
+		if len(args) == 0 {
+			msg = fmt.Sprintf("%s%s", getPrefix(), format)
+		} else {
+			msg = fmt.Sprintf(getPrefix()+format, args)
+		}
+
+		errorLogger.Print(msg)
 	}
 }
 
