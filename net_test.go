@@ -19,3 +19,13 @@ func TestMac(t *testing.T) {
 
 	t.Log(str)
 }
+
+func TestIPByte2String(t *testing.T) {
+	b := make([]byte, 4)
+	b[0] = 192
+	b[1] = 168
+	b[2] = 20
+	b[3] = 136
+	ipstr, _ := IPByte2String(b)
+	t.Log(ipstr)
+}
