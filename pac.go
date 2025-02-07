@@ -3,7 +3,6 @@ package utils
 import (
 	"bufio"
 	"fmt"
-	"github.com/shankusu2017/constant"
 	"io"
 	"log"
 	"net"
@@ -11,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/shankusu2017/constant"
 )
 
 /*
@@ -129,17 +130,18 @@ func quickFind(ip string) (bool, bool) {
 	pacMgr.mtxIPMap.RLock()
 	defer pacMgr.mtxIPMap.RUnlock()
 
-	// 已经明确了是 local ip
 	var done = true
-	val := pacMgr.localIPMap[ip]
-	if val == true {
-		return true, done
-	}
 
-	// 已经明确了是 要外部 ip
-	val = pacMgr.outIPMap[ip]
+	// 已经明确了是 外部 ip(先检查outer,再检查local)
+	val := pacMgr.outIPMap[ip]
 	if val == true {
 		return false, done
+	}
+
+	// 已经明确了是 local ip
+	val = pacMgr.localIPMap[ip]
+	if val == true {
+		return true, done
 	}
 
 	// 不知道是 local 还是 out ip ，还需要进一步查询
